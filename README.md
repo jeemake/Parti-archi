@@ -81,3 +81,27 @@ cd /workspace/kda-graphe
 Sortie : JSON 3 options (graphe + emprise + checker + svg) + bulles. Zéro DXF. Pas de repo GitHub.
 
 Encore fake : slots bulles ≠ murs ; pas de R+1 ; reculs en entrée (pas d’API CU) ; pas de DXF ; pas de GitHub.
+
+## H1 — hybride (Recherche, 100 % algo)
+
+Seeds ≥50 (cour / ailes / barre / cour_services × orientations / miroirs / affectations) → checker slice 0 → score §6 → top 10. `parti.py` intact. Zéro neurone, zéro DXF.
+
+```
+cd /workspace/kda-graphe
+.venv/bin/python -m kda_graphe.hybride fixtures/lot_demo.json
+.venv/bin/python -m pytest -q
+```
+
+Sortie : `out/hybride.json` + `out/h01.svg` … `out/h10.svg`. Tampon 20×12 : `shown` vide (meurt par `rectangle_close`).
+
+Encore fake : bulles ≠ murs ; lumière/vent = proxy graphe ; seeds = templates, pas un échantillonneur libre.
+
+## Diagrammes — Graph2Plan schéma + RPLAN-Toolbox
+
+Vendor : `vendor/Graph2plan` et `vendor/RPLAN-Toolbox` (clone, pas un fork produit). Adapter : `kda_graphe/diagramme.py`. Pas de Data.zip, pas de train, pas de poids, pas de Matlab. Retrieval = nos 10 dispositions. patio ≠ living.
+
+```
+.venv/bin/python -m kda_graphe.diagramme fixtures/rayess_parti.json
+```
+
+`hybride` dessine `out/h01.svg`… via cet adapter (`plot_graph`, pas `plot_fp`).

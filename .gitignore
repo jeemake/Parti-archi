@@ -5,3 +5,11 @@ __pycache__/
 out/*.svg
 out/parti.json
 .DS_Store
+out/*.json
+vendor/**/.git
+vendor/**/__pycache__
+vendor/**/*.pth
+vendor/**/*.npy
+vendor/**/*.mat
+vendor/**/Data.zip
+vendor/**/data.mat
