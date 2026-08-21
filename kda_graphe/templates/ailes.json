@@ -1,0 +1,1 @@
+{"family":"ailes","edges":[{"a":"patio","b":"sejour","rel":"vent"},{"a":"patio","b":"ext","rel":"vent"},{"a":"chambre","b":"jardin","rel":"must_face"}]}

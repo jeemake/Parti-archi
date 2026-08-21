@@ -1,0 +1,33 @@
+{
+  "id": "gao_tampon",
+  "close": {"shape": "rectangle", "w_m": 20, "h_m": 12, "filled": true},
+  "nodes": [
+    {"id": "rue", "kind": "site", "type": "rue", "width_m": null, "area_m2": null, "poly": null},
+    {"id": "parking", "kind": "site", "type": "parking", "width_m": null, "area_m2": 30, "poly": null},
+    {"id": "entree_site", "kind": "site", "type": "entree_site", "width_m": null, "area_m2": 8, "poly": null},
+    {"id": "garage", "kind": "service", "type": "garage", "width_m": 2.4, "area_m2": 12, "poly": null},
+    {"id": "local_ge", "kind": "service", "type": "local_ge", "width_m": null, "area_m2": 6, "poly": null},
+    {"id": "porte", "kind": "seuil", "type": "porte", "width_m": null, "area_m2": 4, "poly": null},
+    {"id": "hall", "kind": "circulation", "type": "hall", "width_m": 3.2, "area_m2": 18, "poly": null},
+    {"id": "sejour", "kind": "jour", "type": "sejour", "width_m": null, "area_m2": 30, "poly": null},
+    {"id": "sam", "kind": "jour", "type": "sam", "width_m": null, "area_m2": 12, "poly": null},
+    {"id": "cuisine", "kind": "jour", "type": "cuisine", "width_m": null, "area_m2": 12, "poly": null},
+    {"id": "ch1", "kind": "nuit", "type": "ch_sde", "width_m": null, "area_m2": 16, "poly": null},
+    {"id": "ch2", "kind": "nuit", "type": "ch_sde", "width_m": null, "area_m2": 16, "poly": null},
+    {"id": "jardin", "kind": "jardin", "type": "jardin", "width_m": null, "area_m2": 40, "poly": null}
+  ],
+  "edges": [
+    {"a": "rue", "b": "parking", "rel": "must"},
+    {"a": "parking", "b": "entree_site", "rel": "must"},
+    {"a": "entree_site", "b": "porte", "rel": "must"},
+    {"a": "porte", "b": "hall", "rel": "must"},
+    {"a": "hall", "b": "sejour", "rel": "must"},
+    {"a": "hall", "b": "sam", "rel": "near"},
+    {"a": "hall", "b": "cuisine", "rel": "near"},
+    {"a": "hall", "b": "ch1", "rel": "door"},
+    {"a": "hall", "b": "ch2", "rel": "door"},
+    {"a": "sejour", "b": "jardin", "rel": "must"},
+    {"a": "garage", "b": "ch1", "rel": "near"},
+    {"a": "local_ge", "b": "ch2", "rel": "near"}
+  ]
+}

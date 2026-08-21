@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+out/*.svg
+out/parti.json
+.DS_Store

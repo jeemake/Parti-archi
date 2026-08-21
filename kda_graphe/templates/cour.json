@@ -1,0 +1,1 @@
+{"family":"cour","edges":[{"a":"sejour","b":"patio","rel":"must"},{"a":"galerie","b":"patio","rel":"near"},{"a":"sam","b":"patio","rel":"near"}]}

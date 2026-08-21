@@ -1,0 +1,1 @@
+{"family":"barre","edges":[{"a":"galerie","b":"jardin","rel":"must_face"},{"a":"sejour","b":"patio","rel":"must"}]}
