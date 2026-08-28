@@ -286,7 +286,31 @@ def to_item(graph: dict, emprise: dict | None = None, disposition: str | None = 
     }
 
 
-def render(graph: dict, dest: Path, emprise: dict | None = None, result: dict | None = None, disposition: str | None = None) -> Path:
+
+PHRASES = {
+    "cour": "Rue au service ; patio nœud ; séjour au jardin.",
+    "ailes": "Deux ailes ; galerie autour du vide ; séjour au jardin.",
+    "ailes_cour": "Deux ailes ; galerie autour du vide ; séjour au jardin.",
+    "cour_services": "Patio habitable + cour service ; service sur rue.",
+    "barre": "Barre mince ; galerie ; séjour face jardin.",
+    "tampon": "Rectangle packed — fail.",
+    "gao_tampon": "Rectangle packed — fail.",
+    "rayess_parti": "Deux ailes ; galerie autour du vide ; séjour au jardin.",
+}
+
+
+def phrase_parti(disposition: str | None, graph: dict | None = None) -> str:
+    key = (disposition or (graph or {}).get("id") or "").lower()
+    if key in PHRASES:
+        return PHRASES[key]
+    for k, v in PHRASES.items():
+        if k in key:
+            return v
+    return "Collier rue → séjour + patio air → jardin."
+
+
+def render_toolbox(graph: dict, dest: Path, emprise: dict | None = None, result: dict | None = None, disposition: str | None = None, phrase: str | None = None) -> Path:
+    """Adapter interne Graph2Plan/Toolbox. Plus la face Affoué."""
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     item = to_item(graph, emprise=emprise, disposition=disposition)
@@ -295,7 +319,6 @@ def render(graph: dict, dest: Path, emprise: dict | None = None, result: dict | 
     fails = result.get("fails") or result.get("fail") or []
     ok = bool(result.get("ok"))
     title = f"{item['id']} · OK" if ok else f"{item['id']} · FAIL: {', '.join(fails)}"
-
     fig = get_figure(size=640, tight_layout=False)
     fig.patch.set_facecolor("#f7f3ea")
     ax = get_axes(size=640, xlim=[-8, 264], ylim=[-8, 264], fig=fig)
@@ -308,28 +331,95 @@ def render(graph: dict, dest: Path, emprise: dict | None = None, result: dict | 
         types = np.array([11])
         edges = np.zeros((0, 3), dtype=int)
     plot_graph(item["boundary"], boxes, types, edges, wall_thickness=5, with_boundary=True, ax=ax)
-
-    for h in item["holes_px"]:
-        if len(h) >= 3:
-            poly = np.asarray(h)
-            ax.fill(poly[:, 0], poly[:, 1], fc="#f7f3ea", ec="#319795", lw=1.6, ls="--", zorder=3)
-    for a in item["air"]:
-        x, y = a["xy"]
-        ax.plot(x, y, "o", mec="#319795", mfc="none", mew=2.2, ms=22, zorder=4)
-        ax.text(x, y + 14, a["id"], fontsize=8, ha="center", color="#319795", zorder=5)
-
-    ax.set_title(title, fontsize=11, loc="left", pad=8)
-    fig = ax.figure
-    fig.text(
-        0.04,
-        0.02,
-        "diagramme · schéma Graph2Plan · plot_graph Toolbox · patio=air · pas un plan",
-        fontsize=8,
-        color="#718096",
-    )
-    fig.savefig(dest, dpi=120, facecolor="#f7f3ea")
+    fig.savefig(dest, dpi=90, facecolor="#f7f3ea")
     plt.close(fig)
     return dest
+
+
+def _poche_polys(graph: dict, emprise: dict | None):
+    coords, holes = _close_poly(graph, emprise)
+    if not coords:
+        coords = [[0, 0], [24, 0], [24, 16], [0, 16]]
+    close = graph.get("close") or {}
+    if not holes and close.get("filled") is False:
+        xs = [p[0] for p in coords]
+        ys = [p[1] for p in coords]
+        minx, maxx = min(xs), max(xs)
+        miny, maxy = min(ys), max(ys)
+        mx, my = (maxx - minx) * 0.28, (maxy - miny) * 0.22
+        holes = [[
+            [minx + mx, miny + my],
+            [maxx - mx, miny + my],
+            [maxx - mx, maxy - my],
+            [minx + mx, maxy - my],
+        ]]
+    return coords, holes
+
+
+def render_poche(graph: dict, dest: Path, emprise: dict | None = None, result: dict | None = None, disposition: str | None = None, phrase: str | None = None) -> Path:
+    """Face Affoué : poche noire, patio blanc, collier lisible, phrase. Pas RPLAN."""
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if result is None:
+        result = check(graph)
+    disp = disposition or graph.get("id") or "parti"
+    phrase = phrase or phrase_parti(disp, graph)
+    ok = bool(result.get("ok"))
+    fails = result.get("fails") or result.get("fail") or []
+    title = phrase if ok else f"{phrase}  ·  FAIL {', '.join(fails)}"
+
+    coords, holes = _poche_polys(graph, emprise)
+    xs = [p[0] for p in coords]
+    ys = [p[1] for p in coords]
+    minx, maxx = min(xs), max(xs)
+    miny, maxy = min(ys), max(ys)
+    bw, bh = max(maxx - minx, 1e-6), max(maxy - miny, 1e-6)
+
+    fig, ax = plt.subplots(figsize=(7.2, 7.2), facecolor="white")
+    ax.set_facecolor("white")
+    ax.set_aspect("equal")
+    ax.axis("off")
+    ring = coords + [coords[0]]
+    ax.fill([p[0] for p in ring], [p[1] for p in ring], color="black", zorder=1)
+    for h in holes:
+        if len(h) < 3:
+            continue
+        hr = h + [h[0]]
+        ax.fill([p[0] for p in hr], [p[1] for p in hr], color="white", zorder=2)
+        cx = sum(p[0] for p in h) / len(h)
+        cy = sum(p[1] for p in h) / len(h)
+        ax.text(cx, cy, "air", fontsize=9, ha="center", va="center", color="black", zorder=4)
+
+    # collier sous la poche, noir, sans légende couleur
+    from checker import COLLAR
+    gap = bh * 0.14
+    y0 = miny - gap
+    for i, name in enumerate(COLLAR):
+        x = minx + (i / (len(COLLAR) - 1)) * bw
+        ax.text(x, y0, name, fontsize=7.5, ha="center", va="top", color="black", zorder=5)
+        if i < len(COLLAR) - 1:
+            x2 = minx + ((i + 1) / (len(COLLAR) - 1)) * bw
+            ax.plot([x + bw * 0.04, x2 - bw * 0.04], [y0 + gap * 0.28, y0 + gap * 0.28], color="black", lw=0.6)
+
+    # galerie lue : trait intérieur si le nœud existe
+    nodes = {n.get("type") or n.get("id") for n in (graph.get("nodes") or [])}
+    if "galerie" in nodes and holes:
+        h = holes[0]
+        hx = [p[0] for p in h + [h[0]]]
+        hy = [p[1] for p in h + [h[0]]]
+        ax.plot(hx, hy, color="black", lw=1.1, ls=(0, (3, 2)), zorder=3)
+
+    ax.set_xlim(minx - bw * 0.08, maxx + bw * 0.08)
+    ax.set_ylim(y0 - gap * 0.7, maxy + bh * 0.18)
+    fig.suptitle(title, fontsize=11, fontweight="bold", color="black", y=0.98)
+    fig.text(0.5, 0.02, "patio=air  ·  poche  ·  pas un plan", ha="center", fontsize=8, color="black")
+    fig.savefig(dest, dpi=140, facecolor="white", bbox_inches="tight")
+    plt.close(fig)
+    return dest
+
+
+def render(graph: dict, dest: Path, emprise: dict | None = None, result: dict | None = None, disposition: str | None = None, phrase: str | None = None) -> Path:
+    return render_poche(graph, dest, emprise=emprise, result=result, disposition=disposition, phrase=phrase)
 
 
 def generate(src) -> dict:
@@ -345,9 +435,10 @@ def generate(src) -> dict:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     png = OUT_DIR / f"{data.get('id') or stem}_diag.png"
     svg = OUT_DIR / f"{data.get('id') or stem}_diag.svg"
-    render(data, png, result=result)
-    render(data, svg, result=result)
-    return {"png": str(png.relative_to(ROOT)), "svg": str(svg.relative_to(ROOT)), "checker": {"ok": result["ok"], "fail": result["fails"]}}
+    phrase = phrase_parti(data.get("id"), data)
+    render(data, png, result=result, phrase=phrase)
+    render(data, svg, result=result, phrase=phrase)
+    return {"png": str(png.relative_to(ROOT)), "svg": str(svg.relative_to(ROOT)), "parti": phrase, "checker": {"ok": result["ok"], "fail": result["fails"]}}
 
 
 def main(argv=None):

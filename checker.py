@@ -42,7 +42,17 @@ FAIL_ORDER = [
     "rectangle_close",
     "hall_width",
     "ch_sde",
+    "wing_depth",
+    "no_traversante",
+    "hall_leftover",
+    "service_rue",
 ]
+
+TRAVERSE_TYPES = frozenset({"ext", "jardin", "patio", "galerie"})
+TRAVERSE_KINDS = frozenset({"air", "jardin"})
+WET_OR_STORE = frozenset({"sdb", "cellier", "ch_sde"})
+SERVICE_ON_RUE = frozenset({"guerite", "local_ge", "garage"})
+RUE_PATH = frozenset({"rue", "parking", "entree_site"})
 
 
 def _nodes(graph: dict) -> list[dict]:
@@ -398,6 +408,133 @@ def _fail_ch_sde(graph: dict) -> list[str]:
     return detail
 
 
+
+def _faces_air(graph: dict, node_id: str) -> set[str]:
+    adj = adjacency(graph)
+    byid = _by_id(graph)
+    faces: set[str] = set()
+    for nb_id, rel in adj.get(node_id, []):
+        if rel == "forbid":
+            continue
+        nb = byid.get(nb_id)
+        if not nb:
+            continue
+        if nb.get("type") in TRAVERSE_TYPES or nb.get("kind") in TRAVERSE_KINDS:
+            faces.add(nb["id"])
+    return faces
+
+
+def _close_wh_m(close: dict, graph: dict) -> tuple[float, float]:
+    poly = close.get("poly")
+    if poly and len(poly) >= 4:
+        xs = [float(p[0]) for p in poly]
+        ys = [float(p[1]) for p in poly]
+        w, h = max(xs) - min(xs), max(ys) - min(ys)
+        if w > 500 or h > 500:  # mm model
+            w, h = w / 1000.0, h / 1000.0
+        return w, h
+    try:
+        w = float(close["w_m"]) if close.get("w_m") is not None else 0.0
+        h = float(close["h_m"]) if close.get("h_m") is not None else 0.0
+    except (TypeError, ValueError, KeyError):
+        w = h = 0.0
+    return w, h
+
+
+def _fail_wing_depth(graph: dict) -> list[str]:
+    close = graph.get("close") or {}
+    holes = close.get("holes") or close.get("holes_m") or []
+    if holes:
+        return []
+    if close.get("filled") is False:
+        return []
+    w, h = _close_wh_m(close, graph)
+    if w <= 0 or h <= 0:
+        return []
+    depth = min(w, h)
+    if depth <= 8.0:
+        return []
+    if not _close_is_rectangle(close, graph):
+        return []
+    return [
+        f"corps rempli profond {depth:.1f} m > 8 m "
+        "sans patio/galerie qui le perce"
+    ]
+
+
+def _fail_no_traversante(graph: dict) -> list[str]:
+    """Séjour : 2 faces. Autres jour/nuit (hors cellier/sdb) : au moins 1 face air.
+    Rayess (séjour patio+jardin) passe ; un tampon sans patio meurt."""
+    detail = []
+    for n in _nodes(graph):
+        typ = n.get("type")
+        if typ in WET_OR_STORE:
+            continue
+        if n.get("kind") not in HABITABLE_KINDS and typ not in {
+            "sejour",
+            "sam",
+            "cuisine",
+            "chambre",
+        }:
+            continue
+        faces = _faces_air(graph, n["id"])
+        if typ == "sejour" and len(faces) < 2:
+            detail.append(
+                f"sejour {n.get('id')!r} sans deux faces "
+                "(ext/jardin/patio/galerie)"
+            )
+        elif typ in {"sam", "cuisine", "chambre"} and len(faces) < 1:
+            detail.append(f"{typ} {n.get('id')!r} sans face air (dead-end)")
+    return detail
+
+
+def _fail_hall_leftover(graph: dict) -> list[str]:
+    detail = []
+    for n in _nodes(graph):
+        if n.get("type") not in HALL_TYPES:
+            continue
+        wide = False
+        fat = False
+        try:
+            if n.get("width_m") is not None and float(n["width_m"]) > 2.00:
+                wide = True
+        except (TypeError, ValueError):
+            pass
+        try:
+            if n.get("area_m2") is not None and float(n["area_m2"]) > 12.0:
+                fat = True
+        except (TypeError, ValueError):
+            pass
+        if wide or fat:
+            detail.append(
+                f"{n.get('type')} {n.get('id')!r} leftover "
+                f"(width>2.00 ou area>12 ; galerie/patio exempts)"
+            )
+    return detail
+
+
+def _fail_service_rue(graph: dict) -> list[str]:
+    detail = []
+    byid = _by_id(graph)
+    adj = adjacency(graph)
+    for n in _nodes(graph):
+        if n.get("type") not in SERVICE_ON_RUE:
+            continue
+        ok = False
+        for nb_id, rel in adj.get(n["id"], []):
+            if rel == "forbid":
+                continue
+            nb = byid.get(nb_id)
+            if nb and (nb.get("type") in RUE_PATH or nb.get("id") in RUE_PATH):
+                ok = True
+                break
+        if not ok:
+            detail.append(
+                f"{n.get('type')} {n.get('id')!r} pas sur le chemin rue→entrée"
+            )
+    return detail
+
+
 def check(graph: dict[str, Any]) -> dict[str, Any]:
     """Return {ok, fails, detail}. ok iff fails is empty. Fails in LAW order."""
     checkers = {
@@ -408,6 +545,10 @@ def check(graph: dict[str, Any]) -> dict[str, Any]:
         "rectangle_close": _fail_rectangle_close,
         "hall_width": _fail_hall_width,
         "ch_sde": _fail_ch_sde,
+        "wing_depth": _fail_wing_depth,
+        "no_traversante": _fail_no_traversante,
+        "hall_leftover": _fail_hall_leftover,
+        "service_rue": _fail_service_rue,
     }
     detail: dict[str, list[str]] = {}
     fails: list[str] = []

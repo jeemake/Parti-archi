@@ -71,6 +71,8 @@ SHARED_EDGES = [
     ("garage", "rue", "near"),
     ("local_ge", "rue", "near"),
     ("sam", "patio", "near"),
+    ("chambre", "galerie", "near"),
+    ("chambre", "jardin", "must_face"),
 ]
 
 
@@ -368,6 +370,17 @@ def repair_once(graph: dict, emprise, family: str, lot_coords, rue_edge: int):
             if "ch_sde" in {ta, tb} and ({"garage", "local_ge"} & {ta, tb}):
                 drop.append(e)
         edges = [e for e in edges if e not in drop]
+    elif first == "no_traversante":
+        for name in ("chambre", "galerie", "sejour", "jardin", "patio", "cuisine", "ext"):
+            _ensure_node(nodes, name)
+        for n in nodes.values():
+            if n.get("type") == "patio":
+                n["kind"] = "air"
+        _add_edge(edges, _tid(nodes, "chambre"), _tid(nodes, "galerie"), "near", nodes)
+        _add_edge(edges, _tid(nodes, "chambre"), _tid(nodes, "jardin"), "must_face", nodes)
+        _add_edge(edges, _tid(nodes, "sejour"), _tid(nodes, "patio"), "must", nodes)
+        _add_edge(edges, _tid(nodes, "sejour"), _tid(nodes, "jardin"), "must_face", nodes)
+        _add_edge(edges, _tid(nodes, "cuisine"), _tid(nodes, "ext"), "must_face", nodes)
     elif first in {"hall_width", "ch_sde"}:
         new_nodes = {}
         for nid, n in nodes.items():
