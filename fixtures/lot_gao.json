@@ -1,0 +1,27 @@
+{
+  "lot": {
+    "poly_m": [
+      [5.000, 25.439],
+      [51.471, 44.688],
+      [59.790, 22.138],
+      [36.969, 13.223],
+      [14.423, 5.000]
+    ],
+    "rue_edge": 0
+  },
+  "reculs_m": {"rue": 5, "voisins": 3},
+  "nord_deg": 22.5,
+  "programme": [
+    {"id": "sejour", "kind": "jour", "type": "sejour", "area_m2": 40},
+    {"id": "sam", "kind": "jour", "type": "sam", "area_m2": 25},
+    {"id": "cuisine", "kind": "jour", "type": "cuisine", "area_m2": 20},
+    {"id": "cellier", "kind": "jour", "type": "cellier", "area_m2": 8},
+    {"id": "patio", "kind": "air", "type": "patio", "area_m2": 25},
+    {"id": "galerie", "kind": "seuil", "type": "galerie", "area_m2": 20},
+    {"id": "chambre", "kind": "nuit", "type": "chambre", "area_m2": 16},
+    {"id": "sdb", "kind": "nuit", "type": "sdb", "area_m2": 4},
+    {"id": "guerite", "kind": "service", "type": "guerite", "area_m2": 12},
+    {"id": "local_ge", "kind": "service", "type": "local_ge", "area_m2": 8},
+    {"id": "garage", "kind": "service", "type": "garage", "area_m2": 36}
+  ]
+}
